@@ -1,3 +1,5 @@
+console.log("=== SCRIPT LOADED ===");
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -11,6 +13,12 @@ const finalScoreEl = document.getElementById('finalScore');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
 
+// DEBUG: Check if elements are found
+console.log("canvas:", canvas);
+console.log("startBtn:", startBtn);
+console.log("startScreen:", startScreen);
+console.log("restartBtn:", restartBtn);
+
 // Game State
 let gameRunning = false;
 let score = 0;
@@ -19,7 +27,7 @@ let frameCount = 0;
 
 // High Score
 let highScore = parseInt(localStorage.getItem('spaceShooterHighScore')) || 0;
-highScoreEl.textContent = `🏆 High: ${highScore}`;
+if (highScoreEl) highScoreEl.textContent = `🏆 High: ${highScore}`;
 
 // Input
 const keys = {};
@@ -86,38 +94,34 @@ const player = {
     },
     
     shoot() {
-    let cooldown = 10; // Normal cooldown for all modes
-    
-    if (this.shootCooldown <= 0) {
-        if (activePowerUp === 'RAPID_FIRE') {
-            // 3 bullets in a burst (slight spread)
-            this.bullets.push(
-                { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 10, color: '#ff00ff', vx: 0 },
-                { x: this.x + this.width/2 - 8, y: this.y + 5, width: 6, height: 15, speed: 10, color: '#ff00ff', vx: -0.5 },
-                { x: this.x + this.width/2 + 2, y: this.y + 5, width: 6, height: 15, speed: 10, color: '#ff00ff', vx: 0.5 }
-            );
-        } else if (activePowerUp === 'SPREAD_SHOT') {
-            // 3 bullets in wide spread
-            this.bullets.push(
-                { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 10, color: '#ff6600', vx: 0 },
-                { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 9, color: '#ff6600', vx: -2 },
-                { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 9, color: '#ff6600', vx: 2 }
-            );
-        } else {
-            // Normal single bullet
-            this.bullets.push({
-                x: this.x + this.width/2 - 3,
-                y: this.y,
-                width: 6,
-                height: 15,
-                speed: 10,
-                color: '#ffff00',
-                vx: 0
-            });
+        let cooldown = 10;
+        if (this.shootCooldown <= 0) {
+            if (activePowerUp === 'RAPID_FIRE') {
+                this.bullets.push(
+                    { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 10, color: '#ff00ff', vx: 0 },
+                    { x: this.x + this.width/2 - 8, y: this.y + 5, width: 6, height: 15, speed: 10, color: '#ff00ff', vx: -0.5 },
+                    { x: this.x + this.width/2 + 2, y: this.y + 5, width: 6, height: 15, speed: 10, color: '#ff00ff', vx: 0.5 }
+                );
+            } else if (activePowerUp === 'SPREAD_SHOT') {
+                this.bullets.push(
+                    { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 10, color: '#ff6600', vx: 0 },
+                    { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 9, color: '#ff6600', vx: -2 },
+                    { x: this.x + this.width/2 - 3, y: this.y, width: 6, height: 15, speed: 9, color: '#ff6600', vx: 2 }
+                );
+            } else {
+                this.bullets.push({
+                    x: this.x + this.width/2 - 3,
+                    y: this.y,
+                    width: 6,
+                    height: 15,
+                    speed: 10,
+                    color: '#ffff00',
+                    vx: 0
+                });
+            }
+            this.shootCooldown = cooldown;
         }
-        this.shootCooldown = cooldown;
-    }
-}
+    },
     
     draw() {
         ctx.fillStyle = this.color;
@@ -381,23 +385,19 @@ function update() {
     frameCount++;
     player.update();
     
-    // Spawn enemies
     if (frameCount % enemySpawnRate === 0) {
         spawnEnemy();
         if (enemySpawnRate > 20) enemySpawnRate--;
     }
     
-    // Spawn power-ups
     if (frameCount % 500 === 0) spawnPowerUp();
     
-    // Update bullets
     player.bullets = player.bullets.filter(bullet => {
         bullet.y -= bullet.speed;
         if (bullet.vx) bullet.x += bullet.vx;
         return bullet.y > -bullet.height && bullet.x > -10 && bullet.x < canvas.width + 10;
     });
     
-    // Update enemies
     enemies = enemies.filter(enemy => {
         enemy.y += enemy.speed;
         
@@ -408,7 +408,6 @@ function update() {
             if (enemy.x > canvas.width - enemy.width) enemy.x = canvas.width - enemy.width;
         }
         
-        // Collision with player
         if (checkCollision(player, enemy)) {
             if (activePowerUp === 'SHIELD') {
                 createExplosion(enemy.x + enemy.width/2, enemy.y + enemy.height/2, '#00ccff');
@@ -424,7 +423,6 @@ function update() {
         
         if (enemy.y > canvas.height) return false;
         
-        // Collision with bullets
         for (let i = player.bullets.length - 1; i >= 0; i--) {
             if (checkCollision(player.bullets[i], enemy)) {
                 enemy.hp--;
@@ -443,7 +441,6 @@ function update() {
         return true;
     });
     
-    // Update power-ups
     powerUps = powerUps.filter(p => {
         p.y += p.speed;
         if (checkCollision(player, p)) {
@@ -453,13 +450,11 @@ function update() {
         return p.y < canvas.height + 50;
     });
     
-    // Power-up timer
     if (powerUpTimer > 0) {
         powerUpTimer--;
         if (powerUpTimer <= 0) activePowerUp = null;
     }
     
-    // Update particles
     particles = particles.filter(p => {
         p.x += p.vx;
         p.y += p.vy;
@@ -468,7 +463,6 @@ function update() {
         return p.life > 0;
     });
     
-    // Update stars
     stars.forEach(star => {
         star.y += star.speed;
         if (star.y > canvas.height) {
@@ -487,7 +481,6 @@ function draw() {
     
     player.draw();
     
-    // Draw shield effect
     if (activePowerUp === 'SHIELD') {
         ctx.strokeStyle = '#00ccff';
         ctx.lineWidth = 3;
@@ -498,7 +491,6 @@ function draw() {
         ctx.globalAlpha = 1;
     }
     
-    // Draw bullets
     player.bullets.forEach(bullet => {
         ctx.fillStyle = bullet.color;
         ctx.shadowColor = bullet.color;
@@ -529,17 +521,27 @@ function gameLoop() {
 }
 
 // ==================== BUTTON HANDLERS ====================
-startBtn.addEventListener('click', () => {
+console.log("Setting up button listeners...");
+
+startBtn.addEventListener('click', (e) => {
+    console.log("START BUTTON CLICKED!");
+    e.preventDefault();
     startScreen.classList.add('hidden');
     resetGame();
     gameRunning = true;
+    console.log("Game started! gameRunning =", gameRunning);
 });
 
-restartBtn.addEventListener('click', () => {
+restartBtn.addEventListener('click', (e) => {
+    console.log("RESTART BUTTON CLICKED!");
+    e.preventDefault();
     gameOverScreen.classList.add('hidden');
     resetGame();
     gameRunning = true;
 });
 
-// Start
+console.log("Button listeners attached!");
+
+// Start the loop
 gameLoop();
+console.log("Game loop started!");
