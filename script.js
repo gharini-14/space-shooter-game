@@ -1,5 +1,3 @@
-console.log("=== SCRIPT LOADED ===");
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -13,12 +11,6 @@ const finalScoreEl = document.getElementById('finalScore');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
 
-// DEBUG: Check if elements are found
-console.log("canvas:", canvas);
-console.log("startBtn:", startBtn);
-console.log("startScreen:", startScreen);
-console.log("restartBtn:", restartBtn);
-
 // Game State
 let gameRunning = false;
 let score = 0;
@@ -27,16 +19,12 @@ let frameCount = 0;
 
 // High Score
 let highScore = parseInt(localStorage.getItem('spaceShooterHighScore')) || 0;
-if (highScoreEl) highScoreEl.textContent = `🏆 High: ${highScore}`;
+highScoreEl.textContent = `🏆 High: ${highScore}`;
 
 // Input
 const keys = {};
 document.addEventListener('keydown', (e) => {
     keys[e.key] = true;
-    if (e.key === ' ' && gameRunning) {
-        e.preventDefault();
-        player.shoot();
-    }
 });
 document.addEventListener('keyup', (e) => keys[e.key] = false);
 
@@ -51,7 +39,6 @@ canvas.addEventListener('touchstart', (e) => {
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
     isTouching = true;
-    player.shoot();
 }, { passive: false });
 
 canvas.addEventListener('touchmove', (e) => {
@@ -86,15 +73,23 @@ const player = {
     shootCooldown: 0,
     
     update() {
+        // Movement
         if (keys['ArrowLeft'] && this.x > 0) this.x -= this.speed;
         if (keys['ArrowRight'] && this.x < canvas.width - this.width) this.x += this.speed;
         if (keys['ArrowUp'] && this.y > 0) this.y -= this.speed;
         if (keys['ArrowDown'] && this.y < canvas.height - this.height) this.y += this.speed;
+        
+        // AUTO-SHOOT — No need to press Space!
+        this.shoot();
+        
+        // Shooting cooldown
         if (this.shootCooldown > 0) this.shootCooldown--;
     },
     
     shoot() {
-        let cooldown = 10;
+        // Faster base shooting (was 10, now 8)
+        let cooldown = activePowerUp === 'RAPID_FIRE' ? 3 : 8;
+        
         if (this.shootCooldown <= 0) {
             if (activePowerUp === 'RAPID_FIRE') {
                 this.bullets.push(
@@ -145,13 +140,13 @@ const player = {
 // ==================== ENEMY TYPES ====================
 const ENEMY_TYPES = {
     BASIC: { hp: 1, size: 40, speedMult: 1, colorBase: 300, points: 10 },
-    FAST: { hp: 1, size: 30, speedMult: 2.5, colorBase: 180, points: 20 },
-    TANK: { hp: 3, size: 55, speedMult: 0.6, colorBase: 0, points: 30 },
-    ZIGZAG: { hp: 2, size: 35, speedMult: 1.3, colorBase: 60, points: 25 }
+    FAST: { hp: 1, size: 30, speedMult: 2, colorBase: 180, points: 20 },
+    TANK: { hp: 3, size: 55, speedMult: 0.5, colorBase: 0, points: 30 },
+    ZIGZAG: { hp: 2, size: 35, speedMult: 1, colorBase: 60, points: 25 }
 };
 
 let enemies = [];
-let enemySpawnRate = 60;
+let enemySpawnRate = 80; // Was 60 — slower spawn rate
 
 function spawnEnemy() {
     const types = Object.keys(ENEMY_TYPES);
@@ -167,7 +162,8 @@ function spawnEnemy() {
         y: -size,
         width: size,
         height: size,
-        speed: (2 + Math.random() * 2 + score / 500) * type.speedMult,
+        // SLOWER ENEMIES — reduced base speed and score multiplier
+        speed: (1.5 + Math.random() * 1.5 + score / 800) * type.speedMult,
         color: `hsl(${type.colorBase + Math.random() * 40}, 100%, 50%)`,
         hp: type.hp,
         maxHp: type.hp,
@@ -233,7 +229,8 @@ let powerUpTimer = 0;
 
 const POWERUP_TYPES = {
     RAPID_FIRE: { color: '#ff00ff', duration: 300, symbol: '⚡' },
-    SHIELD: { color: '#00ccff', duration: 400, symbol: '🛡️' },
+    // LONGER SHIELD — was 400, now 600 (10 seconds at 60fps)
+    SHIELD: { color: '#00ccff', duration: 600, symbol: '🛡️' },
     SPREAD_SHOT: { color: '#ff6600', duration: 300, symbol: '🔥' }
 };
 
@@ -372,7 +369,7 @@ function resetGame() {
     player.bullets = [];
     activePowerUp = null;
     powerUpTimer = 0;
-    enemySpawnRate = 60;
+    enemySpawnRate = 80; // Reset to slower spawn
     player.x = canvas.width / 2 - 25;
     player.y = canvas.height - 80;
     updateUI();
@@ -385,9 +382,10 @@ function update() {
     frameCount++;
     player.update();
     
+    // Slower enemy spawn (was 60, now 80)
     if (frameCount % enemySpawnRate === 0) {
         spawnEnemy();
-        if (enemySpawnRate > 20) enemySpawnRate--;
+        if (enemySpawnRate > 30) enemySpawnRate--; // Slower difficulty ramp
     }
     
     if (frameCount % 500 === 0) spawnPowerUp();
@@ -521,27 +519,17 @@ function gameLoop() {
 }
 
 // ==================== BUTTON HANDLERS ====================
-console.log("Setting up button listeners...");
-
-startBtn.addEventListener('click', (e) => {
-    console.log("START BUTTON CLICKED!");
-    e.preventDefault();
+startBtn.addEventListener('click', () => {
     startScreen.classList.add('hidden');
     resetGame();
     gameRunning = true;
-    console.log("Game started! gameRunning =", gameRunning);
 });
 
-restartBtn.addEventListener('click', (e) => {
-    console.log("RESTART BUTTON CLICKED!");
-    e.preventDefault();
+restartBtn.addEventListener('click', () => {
     gameOverScreen.classList.add('hidden');
     resetGame();
     gameRunning = true;
 });
 
-console.log("Button listeners attached!");
-
 // Start the loop
 gameLoop();
-console.log("Game loop started!");
